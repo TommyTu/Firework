@@ -5,6 +5,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <iostream>
+#include <unistd.h>
 #include "settings.h"
 
 #include "openglshape.h"
@@ -18,6 +19,7 @@ GLWidget::GLWidget(QGLFormat format, QWidget *parent)
     : QGLWidget(format, parent),
       m_width(width()), m_height(height()),
       m_phongProgram(0), m_textureProgram(0), m_horizontalBlurProgram(0), m_verticalBlurProgram(0),
+      m_waterProgram(0),
       m_quad(nullptr), m_sphere(nullptr),
       m_blurFBO1(nullptr), m_blurFBO2(nullptr),
       m_particlesFBO1(nullptr), m_particlesFBO2(nullptr),
@@ -39,18 +41,21 @@ void GLWidget::initializeGL() {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
     // Create shader programs.
-    m_phongProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/phong.vert", ":/shaders/phong.frag");
-    m_textureProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/texture.frag");
-    m_horizontalBlurProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/horizontalBlur.frag");
-    m_verticalBlurProgram = ResourceLoader::createShaderProgram(
+//    m_phongProgram = ResourceLoader::createShaderProgram(
+//                ":/shaders/phong.vert", ":/shaders/phong.frag");
+//    m_textureProgram = ResourceLoader::createShaderProgram(
+//                ":/shaders/quad.vert", ":/shaders/texture.frag");
+//    m_horizontalBlurProgram = ResourceLoader::createShaderProgram(
+//                ":/shaders/quad.vert", ":/shaders/horizontalBlur.frag");
+   // m_verticalBlurProgram = ResourceLoader::createShaderProgram(
+    //            ":/shaders/quad.vert", ":/shaders/verticalBlur.frag");
+//    m_particleUpdateProgram = ResourceLoader::createShaderProgram(
+//                ":/shaders/quad.vert", ":/shaders/particles_update.frag");
+//    m_particleDrawProgram = ResourceLoader::createShaderProgram(
+//                ":/shaders/particles_draw.vert", ":/shaders/particles_draw.frag");
+
+    m_waterProgram = ResourceLoader::createShaderProgram(
                 ":/shaders/quad.vert", ":/shaders/verticalBlur.frag");
-    m_particleUpdateProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/particles_update.frag");
-    m_particleDrawProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/particles_draw.vert", ":/shaders/particles_draw.frag");
 
     // Initialize sphere OpenGLShape.
     std::vector<GLfloat> sphereData = SPHERE_VERTEX_POSITIONS;
@@ -63,11 +68,43 @@ void GLWidget::initializeGL() {
     // TODO: [Task 6] Fill in the positions and UV coordinates to draw a fullscreen quad
     // We've already set the vertex attributes for you, so be sure to follow those specifications
     // (triangle strip, 4 vertices, position followed by UVs)
-    std::vector<GLfloat> quadData;
+    std::vector<GLfloat> quadData = std::vector<GLfloat>((m_height-1) * (m_width-1) * 18);
+    for (int i = 0; i < m_height - 1; i++) {
+        for (int j = 0; j < m_width - 1; j++) {
+            int index = i * (m_width - 1) + j;
+            quadData[18 * index] = (2.0 * i) / m_height - 1;
+            quadData[18 * index + 1] = (2.0 * j) / m_width - 1;
+            quadData[18 * index + 2] = 0.0;
+            quadData[18 * index + 3] = (2.0 * (i + 1)) / m_height - 1;
+            quadData[18 * index + 4] = (2.0 * j) / m_width - 1;
+            quadData[18 * index + 5] = 0.0;
+            quadData[18 * index + 6] = (2.0 * i) / m_height - 1;
+            quadData[18 * index + 7] = (2.0 * (j+1)) / m_width - 1;
+            quadData[18 * index + 8] = 0.0;
+
+            quadData[18 * index + 9] = (2.0 * i) / m_height - 1;
+            quadData[18 * index + 10] = (2.0 * (j+1)) / m_width - 1;
+            quadData[18 * index + 11] = 0.0;
+            quadData[18 * index + 12] = (2.0 * (i + 1)) / m_height - 1;
+            quadData[18 * index + 13] = (2.0 * j) / m_width - 1;
+            quadData[18 * index + 14] = 0.0;
+            quadData[18 * index + 15] = (2.0 * (i + 1)) / m_height - 1;
+            quadData[18 * index + 16] = (2.0 * (j+1)) / m_width - 1;
+            quadData[18 * index + 17] = 0.0;
+        }
+    }
+//    std::vector<GLfloat> quadData = {
+//      -0.96, 0.96, 0,
+//        -0.96, -0.96, 0,
+//        0.96, 0.96, 0,
+//        0.96, 0.96, 0,
+//        -0.96, -0.96, 0,
+//        0.96, -0.96, 0,
+//    };
     m_quad = std::make_unique<OpenGLShape>();
-    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::GEOMETRY_LAYOUT::LAYOUT_TRIANGLE_STRIP, 4);
+    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::LAYOUT_TRIANGLES, (m_height-1) * (m_width-1) * 6);
     m_quad->setAttribute(ShaderAttrib::POSITION, 3, 0, VBOAttribMarker::DATA_TYPE::FLOAT, false);
-    m_quad->setAttribute(ShaderAttrib::TEXCOORD0, 2, 3*sizeof(GLfloat), VBOAttribMarker::DATA_TYPE::FLOAT, false);
+    //m_quad->setAttribute(ShaderAttrib::TEXCOORD0, 2, 3*sizeof(GLfloat), VBOAttribMarker::DATA_TYPE::FLOAT, false);
     m_quad->buildVAO();
 
     // We will use this VAO to draw our particles' triangles
@@ -86,6 +123,7 @@ void GLWidget::paintGL() {
     switch (settings.mode) {
         case MODE_BLUR:
             drawBlur();
+            update();
             break;
         case MODE_PARTICLES:
             drawParticles();
@@ -100,7 +138,13 @@ void GLWidget::drawBlur() {
     //       [Task 5b] Bind m_blurFBO1
     //       [Task 8] Bind m_blurFBO1's color texture
     //       [Task 7] Unbind m_blurFBO1 and render a full screen quad
-
+    static int time = 0;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(m_waterProgram);
+    glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
+    m_quad -> draw();
+    glUseProgram(0);
+    time++;
 }
 
 void GLWidget::drawParticles() {

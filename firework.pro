@@ -3,7 +3,7 @@ TARGET = firework
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++14
-QMAKE_LFLAGS += -no-pie
+# QMAKE_LFLAGS += -no-pie
 CONFIG += c++14
 
 unix:!macx {
@@ -21,8 +21,8 @@ win32 {
 
 DEFINES += GLM_FORCE_RADIANS
 
-INCLUDEPATH += src cs123_lib glm ../glew-1.10.0/include
-DEPENDPATH += src cs123_lib glm ../glew-1.10.0/include
+INCLUDEPATH += src cs123_lib glm glew-1.10.0/include
+DEPENDPATH += src cs123_lib glm glew-1.10.0/include
 
 SOURCES += \
     src/mainwindow.cpp \
@@ -45,7 +45,7 @@ SOURCES += \
     src/gl/GLDebug.cpp \
     src/databinding.cpp \
     src/settings.cpp \
-    ../glew-1.10.0/src/glew.c
+    glew-1.10.0/src/glew.c
 
 
 HEADERS += \
@@ -70,7 +70,7 @@ HEADERS += \
     cs123_lib/sphere.h \
     src/databinding.h \
     src/settings.h \
-    ../glew-1.10.0/include/GL/glew.h
+    glew-1.10.0/include/GL/glew.h
 
 FORMS += src/mainwindow.ui
 
@@ -83,7 +83,9 @@ OTHER_FILES += \
     shaders/quad.vert \
     shaders/particles_update.frag \
     shaders/particles_draw.frag \
-    shaders/particles_draw.vert
+    shaders/particles_draw.vert \
+    shaders/water.frag \
+    shaders/water.vert
 
 RESOURCES += \
     shaders/shaders.qrc

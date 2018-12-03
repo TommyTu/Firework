@@ -1,11 +1,10 @@
 #version 400 core
 
 layout(location = 0) in vec3 position;
-layout(location = 5) in vec2 inUV;
 
-out vec2 uv;
+out vec2 fragCoord;
 
 void main() {
-    uv = inUV;
+    fragCoord = vec2(position);
     gl_Position = vec4(position, 1.0);
 }
