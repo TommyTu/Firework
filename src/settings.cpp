@@ -12,7 +12,7 @@ Settings settings;
 void Settings::loadSettingsOrDefaults() {
     // Set the default values below
     QSettings s("CS123", "Lab07");
-    mode = s.value("mode", MODE_BLUR).toInt();
+    mode = s.value("mode", MODE_WATER).toInt();
 }
 
 void Settings::saveSettings() {

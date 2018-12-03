@@ -6,7 +6,7 @@
 // Enumeration values for the modes from which the user can choose in the GUI.
 enum Mode
 {
-    MODE_BLUR,
+    MODE_WATER,
     MODE_PARTICLES,
     NUM_MODES
 };

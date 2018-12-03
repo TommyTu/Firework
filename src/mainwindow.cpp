@@ -54,7 +54,7 @@ void MainWindow::settingsChanged() {
 void MainWindow::closeEvent(QCloseEvent *event) {
     // Save the settings before we quit
     settings.saveSettings();
-    QSettings qtSettings("CS123", "Lab07");
+    QSettings qtSettings("CS123", "Project");
     qtSettings.setValue("geometry", saveGeometry());
     qtSettings.setValue("windowState", saveState());
 

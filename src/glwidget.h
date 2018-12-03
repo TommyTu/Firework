@@ -32,7 +32,7 @@ protected:
     void wheelEvent(QWheelEvent *e);
 
 private:
-    void drawBlur();
+    void drawWater();
     void drawParticles();
     void setParticleViewport();
 
@@ -41,12 +41,7 @@ private:
     int m_width;
     int m_height;
 
-    GLuint m_phongProgram;
-    GLuint m_textureProgram;
-    GLuint m_horizontalBlurProgram;
-    GLuint m_verticalBlurProgram;
-    GLuint m_particleUpdateProgram;
-    GLuint m_particleDrawProgram;
+
     GLuint m_waterProgram;
 
     std::unique_ptr<OpenGLShape> m_quad;
