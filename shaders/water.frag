@@ -3,9 +3,8 @@
 
 in vec2 fragCoord;
 
-out vec4 fragColor;
-
 uniform float iTime;
+uniform vec2 resolution;
 
 const bool USE_MOUSE = true; // Set this to true for God Mode :)
 
@@ -148,7 +147,10 @@ void main(){
         waveHeight2 *= waveHeight;
         waveHeight3 *= waveHeight;
 
-        vec2 position = vec2(fragCoord.x, fragCoord.y);
+        // convert coordinates
+        vec2 position = gl_FragCoord.xy / resolution.xy;
+        position.x = position.x * resolution.x / resolution.y;
+        position = position * 2.0 - 1.0;
 
         // modify for moving camera
         vec3 ray_start = vec3(-0.6, -0.15, -1.6);//vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)) ;
@@ -194,22 +196,24 @@ void main(){
         } else {
             color.rgb = skycolor_now.rgb;
         }
-    fragColor = color;
+
     // firework
     vec4 o;
-
-     o-=o;
-
-    vec2 u = fragCoord;
-
-        float e, d, i=-2.;
-
-        for(vec4 p; i++<9.; d = floor(e = i*9.1+iTime),p = N(d)+.3, e -= d)
-            for(d=0.; d++<50.;)
-                o += p*(1.-e) / 1e3 / length(u-(p-e*(N(d*i)-.5)).xy);
-
+    o-=o;
+    vec2 u = gl_FragCoord.xy / resolution.xy;
+    float e, d, i=-2.;
+    for(vec4 p; i++<9.; d = floor(e = i*9.1+iTime),p = N(d)+.3, e -= d)
+        for(d=0.; d++<50.;)
+            o += p*(1.-e) / 1e3 / length(u-(p-e*(N(d*i)-.5)).xy);
         //if (u.y < 0.2) o = vec4(0.0);
         //if(u.y<N(ceil(u.x*i+d+e)).x*.4) o-=o*u.y;
+    fragColor = color + o;
 
-     fragColor = color + o;
+    /**
+      1. Firework light -> water **
+      2. firework 3d / realistic (eye? +ray marching? move?) ****
+      3. camera motion (firework position): 2d position -> simulate 3d motion ***
+      4. high dynamic range? **
+      *5. music frequency?
+      */
 }
