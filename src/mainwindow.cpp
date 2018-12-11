@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_ui->setupUi(this);
     QGridLayout *gridLayout = new QGridLayout(m_ui->centralWidget);
     m_glWidget = new GLWidget(qglFormat, this);
-    m_glWidget->setMinimumSize(50, 50);
+    m_glWidget->setMinimumSize(500, 500);
     gridLayout->addWidget(m_glWidget, 0, 1);
 
     settings.loadSettingsOrDefaults();

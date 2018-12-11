@@ -45,7 +45,7 @@ void GLWidget::initializeGL() {
 
     // (triangle strip, 4 vertices, position followed by UVs)
     std::vector<GLfloat> quadData = {
-        -1, 1, 0,
+      -1, 1, 0,
         -1, -1, 0,
         1, 1, 0,
         1, -1, 0
@@ -85,8 +85,9 @@ void GLWidget::drawWater() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(m_waterProgram);
     glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
-    glm::vec2 resolution = glm::vec2(width(), height());
-    glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resolution));
+    glm::vec2 resoution = glm::vec2(width(), height());
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resoution));
+
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
@@ -112,9 +113,9 @@ void GLWidget::resizeGL(int w, int h) {
 // Sets the viewport to ensure that {0,0} is always in the center of the viewport
 // in clip space, and to ensure that the aspect ratio is 1:1
 void GLWidget::setParticleViewport() {
-    int maxDim = std::max(m_width, m_height);
-    int x = (m_width - maxDim) / 2.0f;
-    int y = (m_height - maxDim) / 2.0f;
+    int maxDim = std::max(width(), height());
+    int x = (width() - maxDim) / 2.0f;
+    int y = (height() - maxDim) / 2.0f;
     glViewport(x, y, maxDim, maxDim);
 }
 
