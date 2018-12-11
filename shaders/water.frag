@@ -2,6 +2,7 @@
 #define N(h) fract(sin(vec4(6,9,1,0)*h) * 9e2)
 
 in vec2 fragCoord;
+out vec4 fragColor;
 
 uniform float iTime;
 uniform vec2 resolution;
