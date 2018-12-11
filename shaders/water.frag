@@ -1,11 +1,10 @@
 #version 400 core
 #define N(h) fract(sin(vec4(6,9,1,0)*h) * 9e2)
 
-in vec2 fragCoord;
-
 out vec4 fragColor;
 
 uniform float iTime;
+uniform vec2 resolution;
 
 const bool USE_MOUSE = true; // Set this to true for God Mode :)
 
@@ -147,11 +146,14 @@ void main(){
         waveHeight1 *= waveHeight;
         waveHeight2 *= waveHeight;
         waveHeight3 *= waveHeight;
-
-        vec2 position = vec2(fragCoord.x, fragCoord.y);
+//        gl_FragCoord
+//        resolution passed in as uniform
+        vec2 position = gl_FragCoord.xy/resolution.xy; // vec2((gl_FragCoord.x + 1.0) / 2.0 , (gl_FragCoord.y + 1.0) / 2.0);
+        position.x = position.x * resolution.x/resolution.y;
+        position = position *2.0 -  1.0;
 
         // modify for moving camera
-        vec3 ray_start = vec3(-0.6, -0.15, -1.6);//vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)) ;
+        vec3 ray_start = vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)) ; /// vec3(-0.6, -0.15, -1.6);//
         vec3 ray_dir = normalize(vec3(position,0) - ray_start);
         ray_start.y = 1.0; //cos(iTime * 0.5) * 0.2 - 0.25 + sin(iTime * 2.0) * 0.05;
 
@@ -181,7 +183,7 @@ void main(){
             //vec3 light2_dir = normalize(light2_pos - p);
             vec3 n = gradientNormalFast(p, map_p);
                 vec3 ambient = skycolor_now * 0.1;
-            vec3 diffuse1 = vec3(1.1, 1.1, 0.6) * max(0.0, dot(light1_dir, n)  * 4.5);
+            vec3 diffuse1 = vec3(0.55, 0.55, 0.3) /2.0 * max(0.0, dot(light1_dir, n)  * 4.5);
             vec3 r = reflect(light1_dir, n);
             //vec3 r2 = reflect(light2_dir, n);
 
@@ -200,7 +202,7 @@ void main(){
 
      o-=o;
 
-    vec2 u = fragCoord;
+    vec2 u = gl_FragCoord.xy / resolution.xy;
 
         float e, d, i=-2.;
 
@@ -212,4 +214,14 @@ void main(){
         //if(u.y<N(ceil(u.x*i+d+e)).x*.4) o-=o*u.y;
 
      fragColor = color + o;
+
+
+     /**
+       TODO:
+       1. firework light ->  water **
+       2. firework 3d / realistic (eye? + ray marching? move ? )   ****
+       3. camera motion (firework position): 2d position -> simulate 3d motion ***
+       4. high dynamic range ?  ***
+       *5. frequency?
+       */
 }
