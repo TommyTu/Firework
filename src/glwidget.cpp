@@ -44,33 +44,14 @@ void GLWidget::initializeGL() {
                 ":/shaders/water.vert", ":/shaders/water.frag");
 
     // (triangle strip, 4 vertices, position followed by UVs)
-    std::vector<GLfloat> quadData = std::vector<GLfloat>((m_height-1) * (m_width-1) * 18);
-    for (int i = 0; i < m_height - 1; i++) {
-        for (int j = 0; j < m_width - 1; j++) {
-            size_t index = i * (m_width - 1) + j;
-            quadData[18 * index] = (2.f * i) / m_height - 1;
-            quadData[18 * index + 1] = (2.f * j) / m_width - 1;
-            quadData[18 * index + 2] = 0.f;
-            quadData[18 * index + 3] = (2.f * (i + 1)) / m_height - 1;
-            quadData[18 * index + 4] = (2.f * j) / m_width - 1;
-            quadData[18 * index + 5] = 0.f;
-            quadData[18 * index + 6] = (2.f * i) / m_height - 1;
-            quadData[18 * index + 7] = (2.f * (j+1)) / m_width - 1;
-            quadData[18 * index + 8] = 0.f;
-
-            quadData[18 * index + 9] = (2.f * i) / m_height - 1;
-            quadData[18 * index + 10] = (2.f * (j+1)) / m_width - 1;
-            quadData[18 * index + 11] = 0.f;
-            quadData[18 * index + 12] = (2.f * (i + 1)) / m_height - 1;
-            quadData[18 * index + 13] = (2.f * j) / m_width - 1;
-            quadData[18 * index + 14] = 0.f;
-            quadData[18 * index + 15] = (2.f * (i + 1)) / m_height - 1;
-            quadData[18 * index + 16] = (2.f * (j + 1)) / m_width - 1;
-            quadData[18 * index + 17] = 0.0;
-        }
-    }
+    std::vector<GLfloat> quadData = {
+      -1, 1, 0,
+        -1, -1, 0,
+        1, 1, 0,
+        1, -1, 0
+    };
     m_quad = std::make_unique<OpenGLShape>();
-    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::LAYOUT_TRIANGLES, (m_height-1) * (m_width-1) * 6);
+    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::LAYOUT_TRIANGLE_STRIP, 4);
     m_quad->setAttribute(ShaderAttrib::POSITION, 3, 0, VBOAttribMarker::DATA_TYPE::FLOAT, false);
     //m_quad->setAttribute(ShaderAttrib::TEXCOORD0, 2, 3*sizeof(GLfloat), VBOAttribMarker::DATA_TYPE::FLOAT, false);
     m_quad->buildVAO();
@@ -104,6 +85,10 @@ void GLWidget::drawWater() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(m_waterProgram);
     glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
+    glm::vec2 resoution = glm::vec2(width(), height());
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resoution));
+
+    glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
     time++;
@@ -128,9 +113,9 @@ void GLWidget::resizeGL(int w, int h) {
 // Sets the viewport to ensure that {0,0} is always in the center of the viewport
 // in clip space, and to ensure that the aspect ratio is 1:1
 void GLWidget::setParticleViewport() {
-    int maxDim = std::max(m_width, m_height);
-    int x = (m_width - maxDim) / 2.0f;
-    int y = (m_height - maxDim) / 2.0f;
+    int maxDim = std::max(width(), height());
+    int x = (width() - maxDim) / 2.0f;
+    int y = (height() - maxDim) / 2.0f;
     glViewport(x, y, maxDim, maxDim);
 }
 
