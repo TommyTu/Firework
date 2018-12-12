@@ -18,7 +18,8 @@ using namespace CS123::GL;
 GLWidget::GLWidget(QGLFormat format, QWidget *parent)
     : QGLWidget(format, parent),
       m_width(width()), m_height(height()),
-      m_waterProgram(0),
+      m_waterProgram(0), m_terrainProgram(0),
+      m_terrain_texture_id(0),
       m_quad(nullptr), m_sphere(nullptr),
       m_blurFBO1(nullptr), m_blurFBO2(nullptr),
       m_particlesFBO1(nullptr), m_particlesFBO2(nullptr),
@@ -43,6 +44,9 @@ void GLWidget::initializeGL() {
     m_waterProgram = ResourceLoader::createShaderProgram(
                 ":/shaders/water.vert", ":/shaders/water.frag");
 
+    m_terrainProgram = ResourceLoader::createShaderProgram(
+                ":/shaders/terrain.vert", ":/shaders/terrain.frag");
+
     // (triangle strip, 4 vertices, position followed by UVs)
     std::vector<GLfloat> quadData = {
       -1, 1, 0,
@@ -64,6 +68,16 @@ void GLWidget::initializeGL() {
     GLint maxRenderBufferSize;
     glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE_EXT, &maxRenderBufferSize);
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
+
+    // terrain textures
+    QImage image("/Users/luzhoutao/Desktop/terrain.png"); // TODO
+    image = QGLWidget::convertToGLFormat(image);
+    glGenTextures(1, &(m_terrain_texture_id));
+    glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
+
 }
 
 void GLWidget::paintGL() {
@@ -95,11 +109,17 @@ void GLWidget::drawWater() {
 }
 
 void GLWidget::drawParticles() {
-    auto prevFBO = m_evenPass ? m_particlesFBO1 : m_particlesFBO2;
-    auto nextFBO = m_evenPass ? m_particlesFBO2 : m_particlesFBO1;
-    float firstPass = m_firstPass ? 1.0f : 0.0f;
-    m_firstPass = false;
-    m_evenPass = !m_evenPass;
+    static int time = 0;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(m_terrainProgram);
+    glUniform1f(glGetUniformLocation(m_terrainProgram, "iTime"), time/60.f);
+    glm::vec2 resoution = glm::vec2(width(), height());
+    glUniform2fv(glGetUniformLocation(m_terrainProgram, "resolution"), 1, glm::value_ptr(resoution));
+
+    glViewport(0, 0, m_width, m_height);
+    m_quad -> draw();
+    glUseProgram(0);
+    time++;
 }
 
 // This is called at the beginning of the program between initializeGL and

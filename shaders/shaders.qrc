@@ -2,5 +2,7 @@
     <qresource prefix="/shaders">
         <file>water.frag</file>
         <file>water.vert</file>
+	<file>terrain.frag</file>
+	<file>terrain.vert</file>
     </qresource>
 </RCC>

@@ -43,6 +43,9 @@ private:
 
 
     GLuint m_waterProgram;
+    GLuint m_terrainProgram;
+
+    GLuint m_terrain_texture_id;
 
     std::unique_ptr<OpenGLShape> m_quad;
     std::unique_ptr<OpenGLShape> m_sphere;
