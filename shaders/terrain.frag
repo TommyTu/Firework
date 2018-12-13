@@ -1,4 +1,6 @@
 #version 400 core
+#define N(h) fract(cos(vec4(6,9,1,0)*h) * 9e2)
+#define N1(h) 0.5f * fract(cos(401*h) * 9e2)
 
 out vec4 fragColor;
 
@@ -10,6 +12,11 @@ uniform sampler2D iChannel0;
 
 const float box_x = 10.;
 const float box_y = 0.2;
+
+const float PI = 3.14159265;
+const float MAX_RAYMARCH_DIST = 150.0;
+const float MIN_RAYMARCH_DELTA = 0.00015;
+const float GRADIENT_DELTA = 0.015;
 
 const int RAY_ITER  = 30;
 const int RAY_ITER_BW = 20;
@@ -31,7 +38,26 @@ float map(vec2 p)
         p += iTime * vec2(0.1, 0.05);
 
     //  *** Choose the map function here ***
-    return elevated(p);
+    return fbm(p);
+}
+
+
+float f(vec3 p)
+{
+    float h=fbm(p.xz);
+    h+=smoothstep(-.5,1.5,h);
+    h=p.y-h;
+    return h;
+}
+
+vec3 getNormal(vec3 p, float t)
+{
+    vec3 eps=vec3(0.001*t,0.0,0.0);
+    vec3 n=vec3(f(p-eps.xyy)-f(p+eps.xyy),
+                2.0*eps.x,
+                f(p-eps.yyx)-f(p+eps.yyx));
+
+    return normalize(n);
 }
 
 
@@ -70,9 +96,8 @@ float fbm(vec2 p)
         a *= 0.5;
         p = p*2.0;
     }
-    return 0.1*r;
+    return 0.3*r;
 }
-
 
 vec3 noised( in vec2 x )
 {
@@ -212,21 +237,123 @@ bool ReadKey( int key, bool toggle )
     return (keyVal>.5)?true:false;
 }
 
+vec4 lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skycolor_now) {
+    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    float map_p;
+    int iterations;
+    float dist = castray(ray_start, ray_dir); // -2 dress, -1 bg, terrain
+    if (dist > 0.0) {
+        vec3 p = ray_start + ray_dir * dist;
+        vec3 light1_dir = normalize(light1_pos - p);
+        //vec3 light2_dir = normalize(light2_pos - p);
+        vec3 n = getNormal(ray_start + dist * ray_dir, dist);
+        vec3 ambient = vec3(0.0);//skycolor_now * 0.1;
+        vec3 diffuse1 = vec3(0.15, 0.15, 0.07) /2.0 * max(0.0, dot(light1_dir, n)  * 4.5);
+        vec3 r = reflect(light1_dir, n);
+        //vec3 r2 = reflect(light2_dir, n);
+        // modify for changing reflection color
+        vec3 specular1 = vec3(1.0, 1.0, 1.0) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
+        //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
+        float fog = min(max(p.z * 0.07, 0.0), 1.0);
+        //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
+        color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog);// + skycolor_now * fog;
+    } else {
+        color.rgb = skycolor_now.rgb;  // sky (above water) = sky + moon
+    }
+    return color;
+
+}
+
+vec4 firework_lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skycolor_now) {
+    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    float map_p;
+    int iterations;
+    float dist = castray(ray_start, ray_dir); // -2 dress, -1 bg, terrain
+    if (dist > 0.0) {
+        vec3 p = ray_start + ray_dir * dist;
+        vec3 light1_dir = normalize(light1_pos - p);
+        //vec3 light2_dir = normalize(light2_pos - p);
+        vec3 n = getNormal(ray_start + dist * ray_dir, dist);
+//        vec3 ambient = vec3(0.0);//skycolor_now * 0.1;
+//        vec3 diffuse1 = 0vec3(0.15, 0.15, 0.07) /2.0 * max(0.0, dot(light1_dir, n)  * 4.5);
+        vec3 r = reflect(light1_dir, n);
+        //vec3 r2 = reflect(light2_dir, n);
+        // modify for changing reflection color
+        vec3 specular1 = vec3(1.0, 1.0, 1.0) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
+        //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
+        float fog = min(max(p.z * 0.07, 0.0), 1.0);
+        //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
+        color.rgb = specular1  * (1.0 - fog);// + skycolor_now * fog;
+    } else {
+        color.rgb = vec3(0.0); //skycolor_now.rgb;  // sky (above water) = sky + moon
+    }
+    return color;
+
+}
+
 vec3 render(in vec3 ro, in vec3 rd)
 {
-    float d = castray(ro, rd);
+    vec3 light1_pos = vec3(-80, 100.f, 1000.0);
 
-    if(d<-1.5) // terrain "dress"
-        return vec3(0.1);
-    else if(d<0.0) // background
-    {
-        return mix(vec3(0.3, 0.3, 0.3), vec3(0.2, 0.2, 0.4), gl_FragCoord.y/resolution.y);
+    // skycolor
+    float sunperc = pow(max(0.0, min(dot(rd, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
+    float middayperc = 0.15;
+
+    // modify for change scene color
+    vec3 suncolor = (1.0 - max(0.0, middayperc)) * vec3(middayperc + 0.8, middayperc + 0.8, middayperc + 0.8) + max(0.0, middayperc) * vec3(0.8, 0.8, 0.6) * 4.0;
+    vec3 skycolor = vec3(middayperc + 0.1, middayperc + 0.1, middayperc + 0.1); // 0, 0.1, 0.3 -> blue
+    vec3 skycolor_now = suncolor * sunperc + (skycolor * (middayperc * 1.6 + 0.5)) * (1.0 - sunperc);
+
+    //vec3 bg_color = mix(vec3(0.3, 0.3, 0.3), vec3(0.2, 0.2, 0.4), gl_FragCoord.y/resolution.y);
+    vec4 color = lighting(ro, rd, light1_pos, skycolor_now);
+
+    // firework
+    vec4 o = vec4(0);
+    vec2 u = gl_FragCoord.xy / resolution.xy;
+    vec4 p;
+    float e, d = -2;
+    for(float i = 0; i < 5.; i++) {
+//        vec4 cur_o = vec4(0.0);
+        if (p.y < 1) {
+            for(d=0.;d<100.;d++) {
+                // vec4 cycle = N(d*i)-0.5;
+//              if(pow(cycle.x,2) + pow(cycle.y,2) > 0.25) continue;
+                //vec4 particle = p-e*cycle;
+                //vec2 dist = u - particle.xy;
+
+
+                float r = N1(d*i);
+                float theta = 2 * PI * d / 100;
+                vec2 cycle = vec2(r*cos(theta), r*sin(theta) );
+                vec2 particle = p.xy - e * cycle;
+                o += (p*(1.-e) / 3e3) / length(u - particle);
+            }
+            vec3 fire_pos = vec3(resolution.x* p.x, p.y * resolution.y, 500);
+            color += firework_lighting(ro,rd,fire_pos,(p*(1.-e)).rgb);
+            //o += cur_o;
+        }
+        d = floor(e = 0.6*i*9.1+iTime);
+        p = N(d);
+        p.y += 0.7 ;
+        e -= d;
     }
+        //if (u.y < 0.2) o = vec4(0.0);
+        //if(u.y<N(ceil(u.x*i+d+e)).x*.4) o-=o*u.y;
 
-    vec3 p = ro + d*rd;
-    //return ao(p) * mix(vec3(0.5), vec3(0.8), p.y/0.2);
-    return  mix(vec3(0.1, 0.09, 0.08), vec3(0.9, 0.8, 0.7), 0.75*ao(p) + 0.25*min(1.0, p.y/0.2)) ;
+    color = color + o;
 
+
+    return color.xyz;
+//    if(d<-1.5) // terrain "dress"
+//        return vec3(0.1);
+//    else if(d<0.0) // background
+//    {
+//        return mix(vec3(0.3, 0.3, 0.3), vec3(0.2, 0.2, 0.4), gl_FragCoord.y/resolution.y);
+//    }
+
+//    vec3 p = ro + d*rd;
+//    //return ao(p) * mix(vec3(0.5), vec3(0.8), p.y/0.2);
+//    return  mix(vec3(0.1, 0.09, 0.08), vec3(0.9, 0.8, 0.7), 0.75*ao(p) + 0.25*min(1.0, p.y/0.2)) ;
 
 }
 
@@ -263,6 +390,10 @@ void main()
     // ray direction
     vec3 rd = ca * normalize( vec3(p.xy,2.0) );
     vec3 col = render(ro, rd);
-    col = pow( col, vec3(0.4545) );
+    col = pow( col, vec3(0.4745) );
+
     fragColor=vec4( col, 1.0 );
 }
+
+
+
