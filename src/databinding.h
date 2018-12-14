@@ -41,6 +41,38 @@ signals:
 
 };
 
+
+
+
+class IntBinding : public DataBinding {
+    Q_OBJECT
+public:
+    virtual ~IntBinding() {}
+
+    static IntBinding* bindSliderAndTextbox(
+        QSlider *slider, QLineEdit *textbox, int &value, int minValue, int maxValue);
+
+    static IntBinding* bindTextbox(QLineEdit *textbox, int &value);
+
+private slots:
+    void intChanged(int newValue);
+    void stringChanged(QString newValue);
+
+signals:
+    void updateInt(int newValue);
+    void updateString(QString newValue);
+
+private:
+    IntBinding(int &value) : DataBinding(), m_value(value) {}
+
+    static void connectToSliders(IntBinding* binding, QSlider *slider, QLineEdit *textbox);
+    static void setWidgetValues(QSlider *slider, QLineEdit *textbox, int value, int minValue, int maxValue);
+    int &m_value;
+};
+
+
+
+
 /*!
 
 @class ChoiceBinding

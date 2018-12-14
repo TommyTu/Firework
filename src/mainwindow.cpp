@@ -44,6 +44,11 @@ void MainWindow::dataBind() {
     BIND(ChoiceBinding::bindRadioButtons(NUM_MODES, settings.mode,
                                     m_ui->modeBlur,
                                     m_ui->modeParticles));
+
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->numFireSlide, m_ui->numFireTextbox, settings.numFire, 0, 10))
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->numParSlide, m_ui->numParTextbox, settings.numPar, 0, 75))
 #undef BIND
 }
 
