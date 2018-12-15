@@ -42,7 +42,27 @@ signals:
 };
 
 
+/**
+ * @class BoolBinding
+ *
+ * This class binds a checkbox to a bool, so when the checkbox is changed the bool is updated
+ * with the new value.  This does not update the checkbox when the bool is set to a new value.
+ */
+class BoolBinding : public DataBinding {
+    Q_OBJECT
+public:
+    virtual ~BoolBinding() {}
 
+    static BoolBinding* bindCheckbox(QCheckBox *checkbox, bool &value);
+
+private slots:
+    void boolChanged(bool newValue);
+
+private:
+    BoolBinding(bool &value) : DataBinding(), m_value(value) {}
+
+    bool &m_value;
+};
 
 class IntBinding : public DataBinding {
     Q_OBJECT

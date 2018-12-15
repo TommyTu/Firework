@@ -28,6 +28,7 @@ struct Settings {
 
     // Saves the current settings to disk.
     void saveSettings();
+    bool useCameraMotion;
     int color_r;
     int color_g;
     int color_b;

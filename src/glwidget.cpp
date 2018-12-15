@@ -105,6 +105,8 @@ void GLWidget::drawWater() {
     glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
     glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
     glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useCameraMotion"), settings.useCameraMotion);
+
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
@@ -119,9 +121,10 @@ void GLWidget::drawParticles() {
     glm::vec2 resoution = glm::vec2(width(), height());
     glUniform2fv(glGetUniformLocation(m_terrainProgram, "resolution"), 1, glm::value_ptr(resoution));
     glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
-    glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glUniform2fv(glGetUniformLocation(m_terrainProgram, "fireData"), 1, glm::value_ptr(fireData));
     glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
-    glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform3fv(glGetUniformLocation(m_terrainProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useCameraMotion"), settings.useCameraMotion);
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
