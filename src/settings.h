@@ -28,6 +28,9 @@ struct Settings {
 
     // Saves the current settings to disk.
     void saveSettings();
+    int color_r;
+    int color_g;
+    int color_b;
     int numFire;
     int numPar;
     int mode;          // The currently selected mode.
