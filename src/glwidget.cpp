@@ -70,7 +70,11 @@ void GLWidget::initializeGL() {
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
 
     // terrain textures
+<<<<<<< HEAD
     QImage image("/course/cs123/data/image/terrain/rock.JPG"); // TODO
+=======
+    QImage image("/course/cs1230/data/image/terrain/rock.JPG"); // TODO
+>>>>>>> 10d51e748fc00e30cfbc77150c5f4d7bad37f812
     image = QGLWidget::convertToGLFormat(image);
     glGenTextures(1, &(m_terrain_texture_id));
     glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
@@ -101,7 +105,10 @@ void GLWidget::drawWater() {
     glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
     glm::vec2 resoution = glm::vec2(width(), height());
     glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resoution));
-
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
@@ -115,7 +122,10 @@ void GLWidget::drawParticles() {
     glUniform1f(glGetUniformLocation(m_terrainProgram, "iTime"), time/60.f);
     glm::vec2 resoution = glm::vec2(width(), height());
     glUniform2fv(glGetUniformLocation(m_terrainProgram, "resolution"), 1, glm::value_ptr(resoution));
-
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
