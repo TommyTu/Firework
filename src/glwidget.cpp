@@ -70,7 +70,7 @@ void GLWidget::initializeGL() {
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
 
     // terrain textures
-    QImage image("/Users/luzhoutao/Desktop/image/terrain/rock.JPG"); // TODO
+    QImage image("/course/cs123/data/image/terrain/rock.JPG"); // TODO
     image = QGLWidget::convertToGLFormat(image);
     glGenTextures(1, &(m_terrain_texture_id));
     glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
