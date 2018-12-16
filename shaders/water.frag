@@ -3,6 +3,10 @@
 #define N1(h) 0.5f * fract(cos(401*h) * 9e2)
 out vec4 fragColor;
 
+uniform int useCameraMotion;
+uniform int useDispMapping;
+
+
 uniform float iTime;
 uniform vec2 resolution;
 uniform vec2 fireData;
@@ -199,7 +203,12 @@ void main(){
     position = position * 2.0 -  1.0;
 
     // modify for moving camera
-    vec3 ray_start = vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)); ///
+    vec3 ray_start;
+    if( useCameraMotion == 1) {
+        ray_start  = vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0));
+    } else {
+        ray_start = vec3(0.5, 0.0, -2.0);
+    }
     vec3 ray_dir = normalize(vec3(position,0) - ray_start);
     ray_start.y = 1.0;
 
