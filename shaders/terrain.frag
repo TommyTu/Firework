@@ -10,7 +10,7 @@ uniform vec2 resolution;
 uniform sampler2D iChannel0;
 
 
-const float box_x = 10.;
+const float box_x = 20.;
 const float box_y = 0.2;
 
 const float PI = 3.14159265;
@@ -26,11 +26,10 @@ const int AO_RAY_ITER = 5;
 const int NUM_RAY_AO = 8;
 const int NOISE_OCTAVES = 7;
 
-float elevated(vec2 p);
 float fbm(vec2 p);
 
 bool terrainMoving = false;
-bool rotation = true;
+bool rotation = false;
 
 float map(vec2 p)
 {
@@ -60,45 +59,6 @@ vec3 getNormal(vec3 p, float t)
     return normalize(n);
 }
 
-
-vec3 noised( in vec2 x );
-
-
-float elevated(vec2 p)
-{
-        const mat2 m2 = mat2(0.8,-0.6,0.6,0.8);
-
-    p = p*3.0+vec2(10.0,-1.0);
-
-    float a = 0.0;
-    float b = 1.0;
-        vec2  d = vec2(0.0);
-    for( int i=0; i<NOISE_OCTAVES; i++ )
-    {
-        vec3 n = noised(p);
-        d += n.yz;
-        a += b*n.x/(1.0+dot(d,d));
-                b *= 0.5;
-        p = m2*p*2.0;
-    }
-    return 0.1*a;
-}
-
-float fbm(vec2 p)
-{
-    p = p*3.0+vec2(10.0,-1.0);
-    float r = 0.0;
-    float a = 1.0;
-    for( int i=0; i<NOISE_OCTAVES; i++ )
-    {
-        vec3 n = noised(p);
-        r+=a*n.x;
-        a *= 0.5;
-        p = p*2.0;
-    }
-    return 0.3*r;
-}
-
 vec3 noised( in vec2 x )
 {
     vec2 p = floor(x);
@@ -111,6 +71,53 @@ vec3 noised( in vec2 x )
         return vec3(a+(b-a)*u.x+(c-a)*u.y+(a-b-c+d)*u.x*u.y,
                                 6.0*f*(1.0-f)*(vec2(b-a,c-a)+(a-b-c+d)*u.yx));
 }
+
+float noise( in vec2 x )
+{
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+    vec2 u = f*f*(3.0-2.0*f);
+    float a = texture(iChannel0,(p+vec2(0.5,0.5))/256.0,-100.0).x;
+    float b = texture(iChannel0,(p+vec2(1.5,0.5))/256.0,-100.0).x;
+    float c = texture(iChannel0,(p+vec2(0.5,1.5))/256.0,-100.0).x;
+    float d = texture(iChannel0,(p+vec2(1.5,1.5))/256.0,-100.0).x;
+    return mix(a, b, u.x) +
+                (c - a)* u.y * (1.0 - u.x) +
+                (d - b) * u.x * u.y;
+}
+
+
+float fbm(vec2 p)
+{
+
+    p = p*3.0+vec2(10.0,-1.0);
+    float r = 0.0;
+    float a = 1.0;
+    for( int i=0; i<NOISE_OCTAVES; i++ )
+    {
+        float n = noise(p);
+        r+=a*n;
+        a *= 0.5;
+        p = p*2.0;
+    }
+    return 0.1*r;
+
+/*
+    p = p*0.09+vec2(0.,-0.9);//p *= 0.09;
+    float f=0.;
+    float freq=4.0;
+    float amp=1.0;
+    for(int i=0;i<NOISE_OCTAVES;++i)
+      {
+          f+=noise(p*freq)*amp;
+          amp*=0.5;
+          freq*=1.79;
+      }
+
+      return f;
+      */
+}
+
 
 vec2 boxRay(in vec3 ro, in vec3 rd)
 {
@@ -176,66 +183,7 @@ float castray(in vec3 ro, in vec3 rd)
 
 }
 
-//oat ao_t0;
-float ao_factor;
-/*id compute_ao_t0()
-{
-    ao_t0 = AO_DIST / pow(1.0 + AO_DT_FACTOR, float(AO_RAY_ITER-1));
-}*/
-void compute_ao_factor()
-{
-    ao_factor = pow(AO_DIST / AO_SMALL_PREC , 1.0/float(AO_RAY_ITER-1))-1.0;
-}
 
-// return lowest ray seeing the sky (angle proportion)
-// rd must be normalized and null in y
-float aoray(in vec3 ro, in vec3 rd)
-{
-
-    float maxt = AO_DIST;
-
-    float t = AO_SMALL_PREC;
-    vec3 d = rd; // cur highest dir
-
-    for(int i = 0; i<AO_RAY_ITER; i++)
-    {
-        vec3 p = ro + rd*t;
-        p.y = map( p.xz ); // p design the map point
-        float t_d = t/dot(rd, d); // compute dist between vertical at p and ro alog dir
-        vec3 p2 = ro+d * t_d; // and deduce point along d
-        if( p2.y < p.y )
-        {
-            d = normalize(p-ro);
-        }
-        t +=  ao_factor * t;
-    }
-
-    return acos(d.y)/3.141593;
-
-}
-
-
-
-float ao(vec3 p)
-{
-    float illum = 0.0;
-    float th = 0.0;
-    float dth = float(NUM_RAY_AO) *0.1591549430; // 1 / (2pi)
-    for(int i = 0; i<NUM_RAY_AO; i++)
-    {
-        illum += aoray(p, vec3(cos(th), 0.0, sin(th)));
-        th += dth;
-    }
-    return illum / float(NUM_RAY_AO)*2.0-1.0;
-}
-
-
-// key is javascript keycode
-bool ReadKey( int key, bool toggle )
-{
-    float keyVal = texture( iChannel0, vec2( (float(key)+.5)/256.0, toggle?.75:.25 ) ).x;
-    return (keyVal>.5)?true:false;
-}
 
 vec4 lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skycolor_now) {
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -256,7 +204,7 @@ vec4 lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skycolor_now) 
         //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
         float fog = min(max(p.z * 0.07, 0.0), 1.0);
         //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
-        color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog);// + skycolor_now * fog;
+        color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog) + skycolor_now * fog;
     } else {
         color.rgb = skycolor_now.rgb;  // sky (above water) = sky + moon
     }
@@ -283,7 +231,7 @@ vec4 firework_lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skyco
         //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
         float fog = min(max(p.z * 0.07, 0.0), 1.0);
         //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
-        color.rgb = specular1  * (1.0 - fog);// + skycolor_now * fog;
+        color.rgb = specular1  * (1.0 - fog) ;//+ skycolor_now * fog;
     } else {
         color.rgb = vec3(0.0); //skycolor_now.rgb;  // sky (above water) = sky + moon
     }
@@ -293,7 +241,7 @@ vec4 firework_lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skyco
 
 vec3 render(in vec3 ro, in vec3 rd)
 {
-    vec3 light1_pos = vec3(-80, 100.f, 1000.0);
+    vec3 light1_pos = vec3(0, 100.f, 500.0);
 
     // skycolor
     float sunperc = pow(max(0.0, min(dot(rd, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
@@ -320,8 +268,6 @@ vec3 render(in vec3 ro, in vec3 rd)
 //              if(pow(cycle.x,2) + pow(cycle.y,2) > 0.25) continue;
                 //vec4 particle = p-e*cycle;
                 //vec2 dist = u - particle.xy;
-
-
                 float r = N1(d*i);
                 float theta = 2 * PI * d / 100;
                 vec2 cycle = vec2(r*cos(theta), r*sin(theta) );
@@ -337,23 +283,10 @@ vec3 render(in vec3 ro, in vec3 rd)
         p.y += 0.7 ;
         e -= d;
     }
-        //if (u.y < 0.2) o = vec4(0.0);
-        //if(u.y<N(ceil(u.x*i+d+e)).x*.4) o-=o*u.y;
-
     color = color + o;
 
 
     return color.xyz;
-//    if(d<-1.5) // terrain "dress"
-//        return vec3(0.1);
-//    else if(d<0.0) // background
-//    {
-//        return mix(vec3(0.3, 0.3, 0.3), vec3(0.2, 0.2, 0.4), gl_FragCoord.y/resolution.y);
-//    }
-
-//    vec3 p = ro + d*rd;
-//    //return ao(p) * mix(vec3(0.5), vec3(0.8), p.y/0.2);
-//    return  mix(vec3(0.1, 0.09, 0.08), vec3(0.9, 0.8, 0.7), 0.75*ao(p) + 0.25*min(1.0, p.y/0.2)) ;
 
 }
 
@@ -366,34 +299,42 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
     return mat3( cu, cv, cw );
 }
 
+vec3 camerapath(float t)
+{
+    vec3 p=vec3(-13.0+3.5*cos(t),3.3,-1.1+2.4*cos(2.4*t+2.0));
+        return p;
+}
+
 void main()
 {
-    //mpute_ao_t0();
-    compute_ao_factor();
     vec2 q = gl_FragCoord.xy/resolution.xy;
     vec2 p = -1.0+2.0*q;
     p.x *= resolution.x/resolution.y;
     vec2 mo = vec2(1.0, 0.0); //iMouse.xy/resolution.xy; -> control ray start by mouse
     float time = 0.0;
-    terrainMoving = ReadKey(65, true); // key 'a'
-    rotation = !ReadKey(82, true); // key 'r'
     if(rotation)
         time = iTime;
 
     // camera
-    vec3 ro = 0.6*vec3( 3.5*cos(0.1*time + 6.0*mo.x), 2.0 + 4.0*mo.y, 3.5*sin(0.1*time + 6.0*mo.x) );
-    vec3 ta = vec3(0.0, -0.5, 0.0);
+    //vec3 ro = vec3(0.,1.,0.);
+    //vec3 ro = vec3(-13.0+3.5*cos(time),3.3,-1.1+2.4*cos(2.4*time+2.0));
+    //vec3 ta = vec3(0.0, -0.5, 0.0);
+    vec3 ta=camerapath(2.75*0.2+0.3);
+    ta.y-=0.2;
+    vec3 ro=camerapath(2.75*0.2);
+
+    vec3 cf = normalize(ta-ro);
+    vec3 cs = normalize(cross(cf,vec3(0.0,1.0,0.0)));
+    vec3 cu = normalize(cross(cs,cf));
+    vec3 rd = normalize(p.x*cs + p.y*cu + 1.5*cf);  // transform from view to world
 
     // camera-to-world transformation
-    mat3 ca = setCamera( ro, ta, 0.0 );
+    //mat3 ca = setCamera( ro, ta, 0.0 );
 
     // ray direction
-    vec3 rd = ca * normalize( vec3(p.xy,2.0) );
+    //vec3 rd = ca * normalize( vec3(p.xy,2.0) );
     vec3 col = render(ro, rd);
     col = pow( col, vec3(0.4745) );
 
     fragColor=vec4( col, 1.0 );
 }
-
-
-
