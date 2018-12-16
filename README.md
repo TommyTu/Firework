@@ -17,8 +17,6 @@ The ocean wave is realized with noise functions. Time is one of the parameters f
 3. others
 (1) firework
 The fireworks are drawn with random locations and random colors. The number of fireworks at the same time and the number of particles for each firework are decided by user. the further the particle to the central booming point, the darker the color is.
-(2) sound
-Sound is played with the scene by using QAudioOutput library.
 ## c. References
 1. Shadertoy examples:
 (1) terrain: 

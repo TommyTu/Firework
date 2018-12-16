@@ -25,7 +25,7 @@ const float MIN_RAYMARCH_DELTA = 0.00015;
 const float GRADIENT_DELTA = 0.015;
 
 const int RAY_ITER  = 30;
-const int RAY_ITER_BW = 20;
+const int RAY_ITER_BW = 3;
 const int NUM_RAY_AO = 8;
 const int NOISE_OCTAVES = 7;
 
@@ -83,6 +83,7 @@ vec3 random_noised(in vec2 x) {
                                 6.0*f*(1.0-f)*(vec2(b-a,c-a)+(a-b-c+d)*u.yx));
 }
 
+
 float fbm(vec2 p)
 {
     if (useDispMapping == 0)
@@ -102,6 +103,8 @@ float fbm(vec2 p)
         a *= 0.5;
         p = p*2.0;
     }
+
+
     return 0.15*r;
 }
 
@@ -151,11 +154,11 @@ float castray(in vec3 ro, in vec3 rd)
             {
                 t-= delt;
                 p = ro + rd*t;
-                        h = map( p.xz );
+                h = map( p.xz );
                 if( p.y > h )
                         return t - delt + delt*(lh-ly)/(p.y-ly-h+lh);
                 lh = h;
-                        ly = p.y;
+                ly = p.y;
             }
         }
         lh = h;
@@ -233,10 +236,12 @@ vec3 render(in vec3 ro, in vec3 rd)
     }
     color = color + o;
     vec3 tex_pos = ro + rd * dist;
-    if (dist <= 0 || useDispMapping == 1)
+    if (dist <= 0.f || useDispMapping == 1)
         return color.xyz;
     else
-        return color.xyz + texture(iChannel0, tex_pos.xz).xyz;
+        return color.xyz + (texture(iChannel0, tex_pos.xz).xyz
+                            + texture(iChannel0, tex_pos.xz + vec2(0.1, 0.1)).xyz)/2.0;
+
 }
 
 int factorial(int n)
