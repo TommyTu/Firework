@@ -86,8 +86,7 @@ OTHER_FILES += \
     shaders/particles_draw.vert \
     shaders/water.frag \
     shaders/water.vert \
-    shaders/terrain.vert \
-    shaders/terrain.frag
-
+    shaders/terrain.frag \
+    shaders/terrain.vert
 RESOURCES += \
     shaders/shaders.qrc

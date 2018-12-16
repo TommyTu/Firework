@@ -1,4 +1,5 @@
 #include "glwidget.h"
+#include <QAudioOutput>
 
 #include "cs123_lib/resourceloader.h"
 #include "cs123_lib/errorchecker.h"
@@ -70,7 +71,7 @@ void GLWidget::initializeGL() {
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
 
     // terrain textures
-    QImage image("/Users/luzhoutao/Desktop/image/terrain/rock.JPG"); // TODO
+    QImage image("/course/cs1230/data/image/terrain/rock.JPG"); // TODO
     image = QGLWidget::convertToGLFormat(image);
     glGenTextures(1, &(m_terrain_texture_id));
     glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
@@ -78,6 +79,30 @@ void GLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
+    QFile inputFile;
+    QAudioOutput* audio;
+    inputFile.setFileName("/home/zlu24/Desktop/test.mp3");
+    inputFile.open(QIODevice::ReadOnly);
+
+    QAudioFormat format;
+    // Set up the format, eg.
+    format.setSampleRate(7600);
+    format.setChannelCount(1);
+    format.setSampleSize(6);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::UnSignedInt);
+
+    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+    if (!info.isFormatSupported(format)) {
+        std::cout<<"raw audio format not supported by backend, cannot play audio."<<std::endl;
+        return;
+    }
+
+    audio = new QAudioOutput(format, this);
+
+    connect(audio,SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
+     audio->start(&inputFile);
 }
 
 void GLWidget::paintGL() {
@@ -101,7 +126,12 @@ void GLWidget::drawWater() {
     glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
     glm::vec2 resoution = glm::vec2(width(), height());
     glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resoution));
-
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useCameraMotion"), settings.useCameraMotion);
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useDispMapping"), settings.useDispMapping);
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
@@ -115,7 +145,12 @@ void GLWidget::drawParticles() {
     glUniform1f(glGetUniformLocation(m_terrainProgram, "iTime"), time/60.f);
     glm::vec2 resoution = glm::vec2(width(), height());
     glUniform2fv(glGetUniformLocation(m_terrainProgram, "resolution"), 1, glm::value_ptr(resoution));
-
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_terrainProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_terrainProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useCameraMotion"), settings.useCameraMotion);
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useDispMapping"), settings.useDispMapping);
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);

@@ -1,15 +1,12 @@
 #version 400 core
 #define N(h) fract(cos(vec4(6,9,1,0)*h) * 9e2)
 #define N1(h) 0.5f * fract(cos(401*h) * 9e2)
-
-
-
 out vec4 fragColor;
 
 uniform float iTime;
 uniform vec2 resolution;
-
-const bool USE_MOUSE = true; // Set this to true for God Mode :)
+uniform vec2 fireData;
+uniform vec3 skyColor;
 
 const float PI = 3.14159265;
 const float MAX_RAYMARCH_DIST = 150.0;
@@ -52,15 +49,9 @@ float snoise(vec2 v)
 // First corner
   vec2 i  = floor(v + dot(v, C.yy) );
   vec2 x0 = v -   i + dot(i, C.xx);
-
 // Other corners
   vec2 i1;
-  //i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
-  //i1.y = 1.0 - i1.x;
   i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  // x0 = x0 - 0.0 + 0.0 * C.xx ;
-  // x1 = x0 - i1 + 1.0 * C.xx ;
-  // x2 = x0 - 1.0 + 2.0 * C.xx ;
   vec4 x12 = x0.xyxy + C.xxzz;
   x12.xy -= i1;
 
@@ -75,12 +66,10 @@ float snoise(vec2 v)
 
 // Gradients: 41 points uniformly over a line, mapped onto a diamond.
 // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
-
   vec3 x = 2.0 * fract(p * C.www) - 1.0;
   vec3 h = abs(x) - 0.5;
   vec3 ox = floor(x + 0.5);
   vec3 a0 = x - ox;
-
 // Normalise gradients implicitly by scaling m
 // Approximation of: m *= inversesqrt( a0*a0 + h*h );
   m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
@@ -110,171 +99,120 @@ vec3 gradientNormalFast(vec3 p, float map_p) {
 }
 
 float intersect(vec3 p, vec3 ray_dir, out float map_p, out int iterations) {
-        iterations = 0;
-        if (ray_dir.y >= 0.0) { return -1.0; } // to see the sea you have to look down
+    iterations = 0;
+    if (ray_dir.y >= 0.0) { return -1.0; } // to see the sea you have to look down
 
-        float distMin = (- 0.5 - p.y) / ray_dir.y;
-        float distMid = distMin;
-        for (int i = 0; i < 50; i++) {
+    float distMin = (- 0.5 - p.y) / ray_dir.y;
+    float distMid = distMin;
+    for (int i = 0; i < 50; i++) {
+        distMid += max(0.05 + float(i) * 0.002, map_p);
+        map_p = map(p + ray_dir * distMid);
+        if (map_p > 0.0) {
+             distMin = distMid + map_p;
+        } else {
+            float distMax = distMid + map_p;
+            // interval found, now bisect inside it
+            for (int i = 0; i < 10; i++) {
                 //iterations++;
-                distMid += max(0.05 + float(i) * 0.002, map_p);
+                distMid = distMin + (distMax - distMin) / 2.0;
                 map_p = map(p + ray_dir * distMid);
+                if (abs(map_p) < MIN_RAYMARCH_DELTA) return distMid;
                 if (map_p > 0.0) {
-                        distMin = distMid + map_p;
+                    distMin = distMid + map_p;
                 } else {
-                        float distMax = distMid + map_p;
-                        // interval found, now bisect inside it
-                        for (int i = 0; i < 10; i++) {
-                                //iterations++;
-                                distMid = distMin + (distMax - distMin) / 2.0;
-                                map_p = map(p + ray_dir * distMid);
-                                if (abs(map_p) < MIN_RAYMARCH_DELTA) return distMid;
-                                if (map_p > 0.0) {
-                                        distMin = distMid + map_p;
-                                } else {
-                                        distMax = distMid + map_p;
-                                }
-                        }
-                        return distMid;
+                    distMax = distMid + map_p;
                 }
+            }
+            return distMid;
         }
-        return distMin;
+    }
+    return distMin;
 }
 
 
-vec4 lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 skycolor_now) {
+vec4 lighting(vec3 ray_start, vec3 ray_dir, float dist, float map_p, vec3 light1_pos, vec3 skycolor_now, int isFirework) {
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-    float map_p;
-    int iterations;
-    float dist = intersect(ray_start, ray_dir, map_p, iterations);
     if (dist > 0.0) {
         vec3 p = ray_start + ray_dir * dist;
         vec3 light1_dir = normalize(light1_pos - p);
-        //vec3 light2_dir = normalize(light2_pos - p);
         vec3 n = gradientNormalFast(p, map_p);
         vec3 ambient = skycolor_now * 0.1;
         vec3 diffuse1 = vec3(0.55, 0.55, 0.3) /2.0 * max(0.0, dot(light1_dir, n)  * 4.5);
         vec3 r = reflect(light1_dir, n);
-        //vec3 r2 = reflect(light2_dir, n);
-        // modify for changing reflection color
-        vec3 specular1 = vec3(1.0, 1.0, 1.0) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
-        //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
         float fog = min(max(p.z * 0.07, 0.0), 1.0);
-        //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
-        color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog) + skycolor_now * fog;
-    } else {
+        vec3 specular1;
+        if (isFirework == 0) {
+            specular1 = vec3(1.0, 1.0, 1.0) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
+                color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog) + skycolor_now * fog;
+        } else {
+            specular1 = skycolor_now.rgb * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
+            color.rgb = specular1 * (1.0 - fog);
+        }
+    } else if (isFirework == 0){
         color.rgb = skycolor_now.rgb;  // sky (above water) = sky + moon
     }
     return color;
 }
 
 
-vec4 firework_lighting(vec3 ray_start, vec3 ray_dir, vec3 light1_pos, vec3 firework_color) {
-    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+
+vec4 render(vec3 ray_start, vec3 ray_dir, vec3 moon_pos, vec3 skycolor_now) {
     float map_p;
     int iterations;
     float dist = intersect(ray_start, ray_dir, map_p, iterations);
-    if (dist > 0.0) {
-        vec3 p = ray_start + ray_dir * dist;
-        vec3 light1_dir = normalize(light1_pos - p);
-        //vec3 light2_dir = normalize(light2_pos - p);
-        vec3 n = gradientNormalFast(p, map_p);
-        vec3 diffuse1 = vec3(0.55, 0.55, 0.3) /2.0 * max(0.0, dot(light1_dir, n)  * 4.5);
-        vec3 r = reflect(light1_dir, n);
-        //vec3 r2 = reflect(light2_dir, n);
 
-        // modify for changing reflection color
-        vec3 specular1 = firework_color.rgb * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
-        //vec3 specular2 = vec3(1.0, 0.0, 0.0) * (0.8 * pow(max(0.0, dot(r2, ray_dir)), 2000.0)) * (5.0/dist);
-        float fog = min(max(p.z * 0.07, 0.0), 1.0);
-        //color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + specular2 + ambient)  * (1.0 - fog) + skycolor_now * fog;
-        color.rgb = specular1 * (1.0 - fog);// + skycolor_now * fog;
-    } else {
-        color.rgb = vec3(0.0);  // sky (above water) = sky + moon
-    }
-    return color;
-}
-
-
-void main(){
-        //mouse = vec2(iMouse.x / iResolution.x, iMouse.y / iResolution.y);
-    mouse = vec2(0.8, 1.0);
-
-    float waveHeight = 5.0 ;//: cos(iTime * 0.03) * 1.2 + 1.6;
-    waveHeight1 *= waveHeight;
-    waveHeight2 *= waveHeight;
-    waveHeight3 *= waveHeight;
-//        gl_FragCoord
-//        resolution passed in as uniform
-    vec2 position = gl_FragCoord.xy/resolution.xy; // vec2((gl_FragCoord.x + 1.0) / 2.0 , (gl_FragCoord.y + 1.0) / 2.0);
-    position.x = position.x * resolution.x/resolution.y;
-    position = position *2.0 -  1.0;
-
-    // modify for moving camera
-    // vec3 ray_start = vec3(-0.8, 0.0, -1.6);//
-    vec3 ray_start = vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)) ; ///
-    vec3 ray_dir = normalize(vec3(position,0) - ray_start);
-    ray_start.y = 1.0; //cos(iTime * 0.5) * 0.2 - 0.25 + sin(iTime * 2.0) * 0.05;
-
-    const float dayspeed = 0.04;
-    float subtime = max(-0.16, sin(iTime * dayspeed) * 0.2);
-    float middayperc = mouse.y * 0.3 - 0.15 ; //max(0.0, sin(subtime));
-
-    // modify to change sun position, keep it stayed!
-    vec3 light1_pos = vec3(-80, middayperc * 2000.0, 1000.0);//cos(subtime * dayspeed) * 200.0);
-
-    //vec3 light2_pos = vec3(500, middayperc * 2000.0, 1000.0); //cos(subtime * dayspeed) * 200.0);
-
-    float sunperc = pow(max(0.0, min(dot(ray_dir, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
-
-    // modify for change scene color
-    vec3 suncolor = (1.0 - max(0.0, middayperc)) * vec3(middayperc + 0.8, middayperc + 0.8, middayperc + 0.8) + max(0.0, middayperc) * vec3(0.8, 0.8, 0.6) * 4.0;
-    vec3 skycolor = vec3(middayperc + 0.1, middayperc + 0.1, middayperc + 0.1); // 0, 0.1, 0.3 -> blue
-    vec3 skycolor_now = suncolor * sunperc + (skycolor * (middayperc * 1.6 + 0.5)) * (1.0 - sunperc);
-
-    vec4 color = lighting(ray_start, ray_dir, light1_pos, skycolor_now);
-    // firework
-    vec4 o = vec4(0);
+    vec4 origin_color = lighting(ray_start, ray_dir, dist, map_p, moon_pos, skycolor_now, 0);
+    vec4 fire_color = vec4(0);
     vec2 u = gl_FragCoord.xy / resolution.xy;
     vec4 p;
     float e, d = -2;
-    for(float i = 0; i < 10.; i++) {
-//        vec4 cur_o = vec4(0.0);
+    for(float i = 0; i < fireData.x; i++) {
         if (p.y < 1) {
-            for(d=0.;d<100.;d++) {
-                // vec4 cycle = N(d*i)-0.5;
-//              if(pow(cycle.x,2) + pow(cycle.y,2) > 0.25) continue;
-                //vec4 particle = p-e*cycle;
-                //vec2 dist = u - particle.xy;
-
-
+            for(d=0.;d<fireData.y;d++) {
                 float r = N1(d*i);
-                float theta = 2 * PI * d / 100;
+                float theta = 2 * PI * d / fireData.y;
                 vec2 cycle = vec2(r*cos(theta), r*sin(theta) );
                 vec2 particle = p.xy - e * cycle;
-                o += (p*(1.-e) / 3e3) / length(u - particle);
+                fire_color += (p*(1.-e) / 3e3) / length(u - particle);
             }
-            vec3 fire_pos = vec3(resolution.x* p.x, p.y * resolution.y, 500);
-            color += firework_lighting(ray_start,ray_dir,fire_pos,(p*(1.-e)).rgb);
-            //o += cur_o;
+            vec3 fire_pos = vec3(resolution.x* (p.x-0.5), p.y * resolution.y, 500);
+            fire_color += lighting(ray_start,ray_dir,dist, map_p,fire_pos,(p*(1.-e)).rgb, 1);
         }
         d = floor(e = 0.6*i*9.1+iTime);
         p = N(d);
         p.y += 0.5;
         e -= d;
     }
-        //if (u.y < 0.2) o = vec4(0.0);
-        //if(u.y<N(ceil(u.x*i+d+e)).x*.4) o-=o*u.y;
-
-    fragColor = color + o;
+    return fire_color+origin_color;
+}
 
 
-     /**
-       TODO:
-       1. firework light ->  water ** 60%
-       2. firework 3d / realistic (eye? + ray marching? move ? )   ****
-       3. camera motion (firework position): 2d position -> simulate 3d motion ***
-       4. high dynamic range ?  ***
-       *5. frequency?
-       */
+void main(){
+
+    float waveHeight = 5.0 ;
+    waveHeight1 *= waveHeight;
+    waveHeight2 *= waveHeight;
+    waveHeight3 *= waveHeight;
+//        resolution passed in as uniform
+    vec2 position = gl_FragCoord.xy / resolution.xy;
+    position.x = position.x * resolution.x/resolution.y;
+    position = position * 2.0 -  1.0;
+
+    // modify for moving camera
+    vec3 ray_start = vec3((sin(iTime) + 1.0) / 2.0, 0.0, min(-1.0, cos(iTime) + (sin(iTime + 3.1415) + cos(iTime + 3.1415))/1.414 - 2.0)); ///
+    vec3 ray_dir = normalize(vec3(position,0) - ray_start);
+    ray_start.y = 1.0;
+
+    // modify to change sun position, keep it stayed!
+    vec3 light1_pos = vec3(-80, 300.0, 1000.0);
+
+    float sunperc = 0.8f *  pow(max(0.0, min(dot(ray_dir, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
+    // modify for change scene color
+    vec3 suncolor = vec3(0.85) + 0.6 * vec3(0.8, 0.8, 0.6);
+   // vec3 skycolor = skyColor; // 0, 0.1, 0.3 -> blue
+    vec3 skycolor = skyColor / 255.0f;
+    vec3 skycolor_now = suncolor * sunperc + (skycolor * 0.9) * (1.0 - sunperc);
+
+    // firework
+    fragColor = render(ray_start, ray_dir, light1_pos, skycolor_now);
 }
