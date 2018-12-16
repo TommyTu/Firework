@@ -51,6 +51,10 @@ void MainWindow::dataBind() {
         m_ui->numParSlide, m_ui->numParTextbox, settings.numPar, 0, 75))
 
 
+    BIND(BoolBinding::bindCheckbox(m_ui->cameraMotion, settings.useCameraMotion))
+    BIND(BoolBinding::bindCheckbox(m_ui->dispMapping, settings.useDispMapping))
+
+
     BIND(IntBinding::bindSliderAndTextbox(
         m_ui->colorSliderRed, m_ui->colorTextboxRed, settings.color_r, 0, 255))
     BIND(IntBinding::bindSliderAndTextbox(

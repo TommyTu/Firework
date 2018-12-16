@@ -54,6 +54,21 @@ void IntBinding::stringChanged(QString newValue) {
 }
 
 
+BoolBinding* BoolBinding::bindCheckbox(QCheckBox *checkbox, bool &value) {
+    // Bind the checkbox and the value together
+    BoolBinding *binding = new BoolBinding(value);
+    connect(checkbox, SIGNAL(toggled(bool)), binding, SLOT(boolChanged(bool)));
+
+    // Set the initial value
+    checkbox->setChecked(value);
+
+    return binding;
+}
+
+void BoolBinding::boolChanged(bool newValue) {
+    m_value = newValue;
+    emit dataChanged();
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

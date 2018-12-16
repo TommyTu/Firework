@@ -11,11 +11,11 @@ Settings settings;
 **/
 void Settings::loadSettingsOrDefaults() {
     // Set the default values below
-    QSettings s("CS123", "Lab07");
+    QSettings s("CS123", "Firework");
     mode = s.value("mode", MODE_WATER).toInt();
 }
 
 void Settings::saveSettings() {
-    QSettings s("CS123", "Lab07");
+    QSettings s("CS123", "Firework");
     s.setValue("mode", mode);
 }
