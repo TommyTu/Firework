@@ -3,6 +3,7 @@
 #include "GL/glew.h"
 #include <QGLWidget>
 #include <QTimer>
+#include <QtMultimedia/QAudioOutput>
 
 #include "glm/glm.hpp"            // glm::vec*, mat*, and basic glm functions
 #include "glm/gtx/transform.hpp"  // glm::translate, scale, rotate
@@ -35,7 +36,6 @@ private:
     void drawWater();
     void drawParticles();
     void setParticleViewport();
-
     void rebuildMatrices();
 
     int m_width;
@@ -59,12 +59,15 @@ private:
     bool m_firstPass;
     bool m_evenPass;
     int m_numParticles;
+    QAudioOutput* m_audio;
 
     glm::mat4 m_view, m_projection;
 
     /** For mouse interaction. */
     float m_angleX, m_angleY, m_zoom;
     QPoint m_prevMousePos;
+   public slots:
+        void finishedPlaying(QAudio::State newState);
 };
 
 #endif // GLWIDGET_H

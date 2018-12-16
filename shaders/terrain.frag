@@ -4,6 +4,9 @@
 
 out vec4 fragColor;
 
+uniform int useCameraMotion;
+uniform int useDispMapping;
+
 uniform float iTime;
 uniform vec2 resolution;
 uniform vec2 fireData;
@@ -51,7 +54,6 @@ vec3 getNormal(vec3 p, float t)
     return normalize(n);
 }
 
-
 vec3 noised( in vec2 x )
 {
     vec2 p = floor(x);
@@ -84,13 +86,14 @@ vec3 random_noised(in vec2 x) {
 
 float fbm(vec2 p)
 {
+
     p = p*3.0+vec2(10.0,-1.0);
     float r = 0.0;
     float a = 1.0;
     for( int i=0; i<NOISE_OCTAVES; i++)
     {
-        vec3 n = noised(p);
-        r+=a*n.x;
+        float n = noise(p);
+        r+=a*n;
         a *= 0.5;
         p = p*2.0;
     }
@@ -262,6 +265,12 @@ mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
     return mat3( cu, cv, cw );
 }
 
+vec3 camerapath(float t)
+{
+    vec3 p=vec3(-13.0+3.5*cos(t),3.3,-1.1+2.4*cos(2.4*t+2.0));
+        return p;
+}
+
 void main()
 {
     vec2 q = gl_FragCoord.xy/resolution.xy;
@@ -286,15 +295,19 @@ void main()
         PL[3] = vec2(-2, 1.);
         PL[4] = vec2(3.,0.);
     }
-    Bcurve = drawBezierGeneralized(PL, 5, mod(time,1));
-    ro = vec3(Bcurve.x, 1.0 - Bcurve.y, Bcurve.y );
+    if( useCameraMotion == 1) {
+        Bcurve = drawBezierGeneralized(PL, 5, mod(time,1));
+        ro = vec3(Bcurve.x, 1.0 - Bcurve.y, Bcurve.y );
+    } else {
+        ro = vec3(0.0, 1.0, 0.0);
+    }
     ta = vec3(-4.0, 0.8, 10.0);
 
     // camera-to-world transformation
-    mat3 ca = setCamera( ro, ta, 0.0 );
+    //mat3 ca = setCamera( ro, ta, 0.0 );
 
     // ray direction
-    vec3 rd = ca * normalize( vec3(p.xy,2.0) );
+    //vec3 rd = ca * normalize( vec3(p.xy,2.0) );
     vec3 col = render(ro, rd);
     col = pow( col, vec3(0.4745) );
 

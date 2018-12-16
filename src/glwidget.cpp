@@ -1,5 +1,4 @@
 #include "glwidget.h"
-#include <QAudioOutput>
 
 #include "cs123_lib/resourceloader.h"
 #include "cs123_lib/errorchecker.h"
@@ -32,6 +31,29 @@ GLWidget::GLWidget(QGLFormat format, QWidget *parent)
 GLWidget::~GLWidget()
 {
     glDeleteVertexArrays(1, &m_particlesVAO);
+}
+
+void GLWidget::finishedPlaying(QAudio::State newState)
+{
+    switch (newState) {
+        case QAudio::IdleState:
+            // Finished playing (no more data)
+            m_audio->stop();
+            delete m_audio;
+            break;
+
+        case QAudio::StoppedState:
+            // Stopped for other reasons
+            if (m_audio->error() != QAudio::NoError) {
+                // Error handling
+                std::cout << "error while playing" << std::endl;
+            }
+            break;
+
+        default:
+            // ... other cases as appropriate
+            break;
+    }
 }
 
 void GLWidget::initializeGL() {
@@ -79,22 +101,22 @@ void GLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
-    foreach (const QAudioDeviceInfo &deviceInfo,  QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
-        std::cout << "Device name: " << deviceInfo.deviceName().toStdString() << std::endl;
+
+    foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices((QAudio::AudioOutput)))
+        std::cout << "device name: " << deviceInfo.preferredFormat().sampleType() << std::endl;
 
     QFile inputFile;
-    QAudioOutput* audio;
-    inputFile.setFileName("/home/zlu24/Desktop/audio.raw");
+    inputFile.setFileName("/Users/luzhoutao/Firework/audio.raw");
     inputFile.open(QIODevice::ReadOnly);
 
     QAudioFormat format;
     // Set up the format, eg.
-    format.setSampleRate(7600);
-    format.setChannelCount(1);
-    format.setSampleSize(6);
+    format.setSampleRate(44100);
+    format.setChannelCount(2);
+    format.setSampleSize(24);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::UnSignedInt);
+    format.setSampleType(QAudioFormat::SignedInt);
 
     QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
     if (!info.isFormatSupported(format)) {
@@ -102,10 +124,10 @@ void GLWidget::initializeGL() {
         return;
     }
 
-    audio = new QAudioOutput(format, this);
+    m_audio = new QAudioOutput(format, this);
 
-    connect(audio,SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
-     audio->start(&inputFile);
+    connect(m_audio, SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
+    m_audio->start(&inputFile);
 }
 
 void GLWidget::paintGL() {
