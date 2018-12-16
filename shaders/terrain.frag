@@ -65,13 +65,29 @@ vec3 noised( in vec2 x )
                                 6.0*f*(1.0-f)*(vec2(b-a,c-a)+(a-b-c+d)*u.yx));
 }
 
+float rand(vec2 co) {
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+vec3 random_noised(in vec2 x) {
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+    vec2 u = f*f*(3.0-2.0*f);
+        float a = rand(p + vec2(0.5, 0.5));
+        float b = rand(p + vec2(1.5,0.5));
+        float c = rand(p + vec2(0.5, 1.5));
+        float d = rand(p + vec2(1.5, 1.5));
+        return vec3(a+(b-a)*u.x+(c-a)*u.y+(a-b-c+d)*u.x*u.y,
+                                6.0*f*(1.0-f)*(vec2(b-a,c-a)+(a-b-c+d)*u.yx));
+}
+
 
 float fbm(vec2 p)
 {
     p = p*3.0+vec2(10.0,-1.0);
     float r = 0.0;
     float a = 1.0;
-    for( int i=0; i<NOISE_OCTAVES; i++ )
+    for( int i=0; i<NOISE_OCTAVES; i++)
     {
         vec3 n = noised(p);
         r+=a*n.x;

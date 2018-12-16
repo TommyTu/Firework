@@ -1,4 +1,5 @@
 #include "glwidget.h"
+#include <QAudioOutput>
 
 #include "cs123_lib/resourceloader.h"
 #include "cs123_lib/errorchecker.h"
@@ -70,11 +71,7 @@ void GLWidget::initializeGL() {
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
 
     // terrain textures
-<<<<<<< HEAD
-    QImage image("/course/cs123/data/image/terrain/rock.JPG"); // TODO
-=======
     QImage image("/course/cs1230/data/image/terrain/rock.JPG"); // TODO
->>>>>>> 10d51e748fc00e30cfbc77150c5f4d7bad37f812
     image = QGLWidget::convertToGLFormat(image);
     glGenTextures(1, &(m_terrain_texture_id));
     glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
@@ -82,6 +79,30 @@ void GLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
+    QFile inputFile;
+    QAudioOutput* audio;
+    inputFile.setFileName("/home/zlu24/Desktop/test.mp3");
+    inputFile.open(QIODevice::ReadOnly);
+
+    QAudioFormat format;
+    // Set up the format, eg.
+    format.setSampleRate(7600);
+    format.setChannelCount(1);
+    format.setSampleSize(6);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::UnSignedInt);
+
+    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+    if (!info.isFormatSupported(format)) {
+        std::cout<<"raw audio format not supported by backend, cannot play audio."<<std::endl;
+        return;
+    }
+
+    audio = new QAudioOutput(format, this);
+
+    connect(audio,SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
+     audio->start(&inputFile);
 }
 
 void GLWidget::paintGL() {
