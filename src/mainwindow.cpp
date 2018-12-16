@@ -52,7 +52,7 @@ void MainWindow::dataBind() {
 
 
     BIND(BoolBinding::bindCheckbox(m_ui->cameraMotion, settings.useCameraMotion))
-
+    BIND(BoolBinding::bindCheckbox(m_ui->dispMapping, settings.useDispMapping))
 
 
     BIND(IntBinding::bindSliderAndTextbox(

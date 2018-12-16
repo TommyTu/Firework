@@ -321,13 +321,26 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>420</y>
+        <y>400</y>
         <width>171</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
        <string>Camera Motion</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="dispMapping">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>430</y>
+        <width>171</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Displacement Mapping</string>
       </property>
      </widget>
     </widget>

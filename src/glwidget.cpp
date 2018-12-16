@@ -106,7 +106,7 @@ void GLWidget::drawWater() {
     glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
     glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
     glUniform1i(glGetUniformLocation(m_waterProgram, "useCameraMotion"), settings.useCameraMotion);
-
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useDispMapping"), settings.useDispMapping);
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
@@ -125,6 +125,7 @@ void GLWidget::drawParticles() {
     glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
     glUniform3fv(glGetUniformLocation(m_terrainProgram, "skyColor"), 1, glm::value_ptr(skyColor));
     glUniform1i(glGetUniformLocation(m_terrainProgram, "useCameraMotion"), settings.useCameraMotion);
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useDispMapping"), settings.useDispMapping);
     glViewport(0, 0, m_width, m_height);
     m_quad -> draw();
     glUseProgram(0);
