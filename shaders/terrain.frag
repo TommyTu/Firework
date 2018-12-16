@@ -83,16 +83,21 @@ vec3 random_noised(in vec2 x) {
                                 6.0*f*(1.0-f)*(vec2(b-a,c-a)+(a-b-c+d)*u.yx));
 }
 
-
 float fbm(vec2 p)
 {
+    if (useDispMapping == 0)
+        return 0;
 
     p = p*3.0+vec2(10.0,-1.0);
     float r = 0.0;
     float a = 1.0;
     for( int i=0; i<NOISE_OCTAVES; i++)
     {
-        float n = noise(p);
+        float n ;
+//        if (useDispMapping == 1)
+        n = noised(p).x;
+//        else
+//            n = random_noised(p).x;
         r+=a*n;
         a *= 0.5;
         p = p*2.0;
@@ -173,7 +178,7 @@ vec4 lighting(vec3 ray_start, vec3 ray_dir, float dist, float map_p, vec3 light1
         float fog = min(max(p.z * 0.07, 0.0), 1.0);
         vec3 specular1;
         if (isFirework == 0) {
-            specular1 = vec3(1.0, 1.0, 1.0) * (0.4 * pow(max(0.0, dot(r, ray_dir)), 5.0));
+            specular1 = vec3(1.0, 1.0, 1.0) * (0.4 * pow(max(0.0, dot(r, ray_dir)), 10.0));
                 color.rgb = (vec3(0.6,0.6,1.2) * diffuse1 + specular1 + ambient)  * (1.0 - fog);
         } else {
             specular1 = vec3(1.0, 1.0, 1.0) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 400.0));
@@ -191,12 +196,11 @@ vec3 render(in vec3 ro, in vec3 rd)
 
     // skycolor
     float sunperc = pow(max(0.0, min(dot(rd, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
-    float middayperc = 0.15;
 
     // modify for change scene color
-    vec3 suncolor = (1.0 - max(0.0, middayperc)) * vec3(middayperc + 0.8, middayperc + 0.8, middayperc + 0.8) + max(0.0, middayperc) * vec3(0.8, 0.8, 0.6) * 4.0;
-    vec3 skycolor = vec3(middayperc + 0.1, middayperc + 0.1, middayperc + 0.1); // 0, 0.1, 0.3 -> blue
-    vec3 skycolor_now = suncolor * sunperc + (skycolor * (middayperc * 1.6 + 0.5)) * (1.0 - sunperc);
+    vec3 suncolor = 0.85 * vec3(0.95, 0.95, 0.95) + 0.95 * vec3(0.8, 0.8, 0.6) * 4.0;
+    vec3 skycolor = skyColor / 255.0f;
+    vec3 skycolor_now = suncolor * sunperc + (skycolor * (0.85 * 1.6 + 0.5)) * (1.0 - sunperc);
 
     // intersect
     float map_p;
@@ -228,7 +232,11 @@ vec3 render(in vec3 ro, in vec3 rd)
         e -= d;
     }
     color = color + o;
-    return color.xyz;
+    vec3 tex_pos = ro + rd * dist;
+    if (dist <= 0 || useDispMapping == 1)
+        return color.xyz;
+    else
+        return color.xyz + texture(iChannel0, tex_pos.xz).xyz;
 }
 
 int factorial(int n)
@@ -304,10 +312,10 @@ void main()
     ta = vec3(-4.0, 0.8, 10.0);
 
     // camera-to-world transformation
-    //mat3 ca = setCamera( ro, ta, 0.0 );
+    mat3 ca = setCamera( ro, ta, 0.0 );
 
     // ray direction
-    //vec3 rd = ca * normalize( vec3(p.xy,2.0) );
+    vec3 rd = ca * normalize( vec3(p.xy,2.0) );
     vec3 col = render(ro, rd);
     col = pow( col, vec3(0.4745) );
 

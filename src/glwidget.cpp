@@ -102,32 +102,32 @@ void GLWidget::initializeGL() {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
 
-    foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices((QAudio::AudioOutput)))
-        std::cout << "device name: " << deviceInfo.preferredFormat().sampleType() << std::endl;
+//    foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices((QAudio::AudioOutput)))
+//        std::cout << "device name: " << deviceInfo.preferredFormat().sampleType() << std::endl;
 
-    QFile inputFile;
-    inputFile.setFileName("/Users/luzhoutao/Firework/audio.raw");
-    inputFile.open(QIODevice::ReadOnly);
+//    QFile inputFile;
+//    inputFile.setFileName("/Users/luzhoutao/Firework/audio.raw");
+//    inputFile.open(QIODevice::ReadOnly);
 
-    QAudioFormat format;
-    // Set up the format, eg.
-    format.setSampleRate(44100);
-    format.setChannelCount(2);
-    format.setSampleSize(24);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
+//    QAudioFormat format;
+//    // Set up the format, eg.
+//    format.setSampleRate(44100);
+//    format.setChannelCount(2);
+//    format.setSampleSize(24);
+//    format.setCodec("audio/pcm");
+//    format.setByteOrder(QAudioFormat::LittleEndian);
+//    format.setSampleType(QAudioFormat::SignedInt);
 
-    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
-    if (!info.isFormatSupported(format)) {
-        std::cout<<"raw audio format not supported by backend, cannot play audio."<<std::endl;
-        return;
-    }
+//    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+//    if (!info.isFormatSupported(format)) {
+//        std::cout<<"raw audio format not supported by backend, cannot play audio."<<std::endl;
+//        return;
+//    }
 
-    m_audio = new QAudioOutput(format, this);
+//    m_audio = new QAudioOutput(format, this);
 
-    connect(m_audio, SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
-    m_audio->start(&inputFile);
+//    connect(m_audio, SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
+//    m_audio->start(&inputFile);
 }
 
 void GLWidget::paintGL() {
