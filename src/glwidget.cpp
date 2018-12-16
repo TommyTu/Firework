@@ -79,9 +79,12 @@ void GLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
+    foreach (const QAudioDeviceInfo &deviceInfo,  QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
+        std::cout << "Device name: " << deviceInfo.deviceName().toStdString() << std::endl;
+
     QFile inputFile;
     QAudioOutput* audio;
-    inputFile.setFileName("/home/zlu24/Desktop/test.mp3");
+    inputFile.setFileName("/home/zlu24/Desktop/audio.raw");
     inputFile.open(QIODevice::ReadOnly);
 
     QAudioFormat format;
