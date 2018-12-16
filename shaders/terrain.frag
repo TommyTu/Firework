@@ -4,6 +4,9 @@
 
 out vec4 fragColor;
 
+uniform int useCameraMotion;
+uniform int useDispMapping;
+
 uniform float iTime;
 uniform vec2 resolution;
 uniform vec2 fireData;
@@ -292,8 +295,12 @@ void main()
         PL[3] = vec2(-2, 1.);
         PL[4] = vec2(3.,0.);
     }
-    Bcurve = drawBezierGeneralized(PL, 5, mod(time,1));
-    ro = vec3(Bcurve.x, 1.0 - Bcurve.y, Bcurve.y );
+    if( useCameraMotion == 1) {
+        Bcurve = drawBezierGeneralized(PL, 5, mod(time,1));
+        ro = vec3(Bcurve.x, 1.0 - Bcurve.y, Bcurve.y );
+    } else {
+        ro = vec3(0.0, 1.0, 0.0);
+    }
     ta = vec3(-4.0, 0.8, 10.0);
 
     // camera-to-world transformation
