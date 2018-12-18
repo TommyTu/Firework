@@ -6,7 +6,7 @@
 // Enumeration values for the modes from which the user can choose in the GUI.
 enum Mode
 {
-    MODE_BLUR,
+    MODE_WATER,
     MODE_PARTICLES,
     NUM_MODES
 };
@@ -28,7 +28,13 @@ struct Settings {
 
     // Saves the current settings to disk.
     void saveSettings();
-
+    bool useCameraMotion;
+    bool useDispMapping;
+    int color_r;
+    int color_g;
+    int color_b;
+    int numFire;
+    int numPar;
     int mode;          // The currently selected mode.
 };
 

@@ -5,6 +5,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <iostream>
+#include <unistd.h>
 #include "settings.h"
 
 #include "openglshape.h"
@@ -17,7 +18,8 @@ using namespace CS123::GL;
 GLWidget::GLWidget(QGLFormat format, QWidget *parent)
     : QGLWidget(format, parent),
       m_width(width()), m_height(height()),
-      m_phongProgram(0), m_textureProgram(0), m_horizontalBlurProgram(0), m_verticalBlurProgram(0),
+      m_waterProgram(0), m_terrainProgram(0),
+      m_terrain_texture_id(0),
       m_quad(nullptr), m_sphere(nullptr),
       m_blurFBO1(nullptr), m_blurFBO2(nullptr),
       m_particlesFBO1(nullptr), m_particlesFBO2(nullptr),
@@ -31,6 +33,29 @@ GLWidget::~GLWidget()
     glDeleteVertexArrays(1, &m_particlesVAO);
 }
 
+void GLWidget::finishedPlaying(QAudio::State newState)
+{
+    switch (newState) {
+        case QAudio::IdleState:
+            // Finished playing (no more data)
+            m_audio->stop();
+            delete m_audio;
+            break;
+
+        case QAudio::StoppedState:
+            // Stopped for other reasons
+            if (m_audio->error() != QAudio::NoError) {
+                // Error handling
+                std::cout << "error while playing" << std::endl;
+            }
+            break;
+
+        default:
+            // ... other cases as appropriate
+            break;
+    }
+}
+
 void GLWidget::initializeGL() {
     ResourceLoader::initializeGlew();
     glEnable(GL_DEPTH_TEST);
@@ -38,54 +63,79 @@ void GLWidget::initializeGL() {
     // Set the color to set the screen when the color buffer is cleared.
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-    // Create shader programs.
-    m_phongProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/phong.vert", ":/shaders/phong.frag");
-    m_textureProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/texture.frag");
-    m_horizontalBlurProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/horizontalBlur.frag");
-    m_verticalBlurProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/verticalBlur.frag");
-    m_particleUpdateProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/quad.vert", ":/shaders/particles_update.frag");
-    m_particleDrawProgram = ResourceLoader::createShaderProgram(
-                ":/shaders/particles_draw.vert", ":/shaders/particles_draw.frag");
 
-    // Initialize sphere OpenGLShape.
-    std::vector<GLfloat> sphereData = SPHERE_VERTEX_POSITIONS;
-    m_sphere = std::make_unique<OpenGLShape>();
-    m_sphere->setVertexData(&sphereData[0], sphereData.size(), VBO::GEOMETRY_LAYOUT::LAYOUT_TRIANGLES, NUM_SPHERE_VERTICES);
-    m_sphere->setAttribute(ShaderAttrib::POSITION, 3, 0, VBOAttribMarker::DATA_TYPE::FLOAT, false);
-    m_sphere->setAttribute(ShaderAttrib::NORMAL, 3, 0, VBOAttribMarker::DATA_TYPE::FLOAT, false);
-    m_sphere->buildVAO();
+    m_waterProgram = ResourceLoader::createShaderProgram(
+                ":/shaders/water.vert", ":/shaders/water.frag");
 
-    // TODO: [Task 6] Fill in the positions and UV coordinates to draw a fullscreen quad
-    // We've already set the vertex attributes for you, so be sure to follow those specifications
+    m_terrainProgram = ResourceLoader::createShaderProgram(
+                ":/shaders/terrain.vert", ":/shaders/terrain.frag");
+
     // (triangle strip, 4 vertices, position followed by UVs)
-    std::vector<GLfloat> quadData;
+    std::vector<GLfloat> quadData = {
+      -1, 1, 0,
+        -1, -1, 0,
+        1, 1, 0,
+        1, -1, 0
+    };
     m_quad = std::make_unique<OpenGLShape>();
-    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::GEOMETRY_LAYOUT::LAYOUT_TRIANGLE_STRIP, 4);
+    m_quad->setVertexData(&quadData[0], quadData.size(), VBO::LAYOUT_TRIANGLE_STRIP, 4);
     m_quad->setAttribute(ShaderAttrib::POSITION, 3, 0, VBOAttribMarker::DATA_TYPE::FLOAT, false);
-    m_quad->setAttribute(ShaderAttrib::TEXCOORD0, 2, 3*sizeof(GLfloat), VBOAttribMarker::DATA_TYPE::FLOAT, false);
+    //m_quad->setAttribute(ShaderAttrib::TEXCOORD0, 2, 3*sizeof(GLfloat), VBOAttribMarker::DATA_TYPE::FLOAT, false);
     m_quad->buildVAO();
 
     // We will use this VAO to draw our particles' triangles
     // It doesn't need any data associated with it, so we don't have to make a full VAO instance
     glGenVertexArrays(1, &m_particlesVAO);
-    // TODO [Task 12] Create m_particlesFBO1 and 2 with std::make_shared
 
     // Print the max FBO dimension.
     GLint maxRenderBufferSize;
     glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE_EXT, &maxRenderBufferSize);
     std::cout << "Max FBO size: " << maxRenderBufferSize << std::endl;
+
+    // terrain textures
+    QImage image("/course/cs1230/data/image/terrain/rock.JPG"); // TODO
+    image = QGLWidget::convertToGLFormat(image);
+    glGenTextures(1, &(m_terrain_texture_id));
+    glBindTexture(GL_TEXTURE_2D, m_terrain_texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
+
+
+//    foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices((QAudio::AudioOutput)))
+//        std::cout << "device name: " << deviceInfo.preferredFormat().sampleType() << std::endl;
+
+//    QFile inputFile;
+//    inputFile.setFileName("/Users/luzhoutao/Firework/audio.raw");
+//    inputFile.open(QIODevice::ReadOnly);
+
+//    QAudioFormat format;
+//    // Set up the format, eg.
+//    format.setSampleRate(44100);
+//    format.setChannelCount(2);
+//    format.setSampleSize(24);
+//    format.setCodec("audio/pcm");
+//    format.setByteOrder(QAudioFormat::LittleEndian);
+//    format.setSampleType(QAudioFormat::SignedInt);
+
+//    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+//    if (!info.isFormatSupported(format)) {
+//        std::cout<<"raw audio format not supported by backend, cannot play audio."<<std::endl;
+//        return;
+//    }
+
+//    m_audio = new QAudioOutput(format, this);
+
+//    connect(m_audio, SIGNAL(stateChanged(QAudio::State)),SLOT(finishedPlaying(QAudio::State)));
+//    m_audio->start(&inputFile);
 }
 
 void GLWidget::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT);
     switch (settings.mode) {
-        case MODE_BLUR:
-            drawBlur();
+        case MODE_WATER:
+            drawWater();
+            update();
             break;
         case MODE_PARTICLES:
             drawParticles();
@@ -94,26 +144,42 @@ void GLWidget::paintGL() {
     }
 }
 
-void GLWidget::drawBlur() {
-    // TODO: [Task 1] Do drawing here!
-    //       [Task 1.5] Call glViewport so that the viewport is the right size
-    //       [Task 5b] Bind m_blurFBO1
-    //       [Task 8] Bind m_blurFBO1's color texture
-    //       [Task 7] Unbind m_blurFBO1 and render a full screen quad
-
+void GLWidget::drawWater() {
+    static int time = 0;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(m_waterProgram);
+    glUniform1f(glGetUniformLocation(m_waterProgram, "iTime"), time/60.f);
+    glm::vec2 resoution = glm::vec2(width(), height());
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "resolution"), 1, glm::value_ptr(resoution));
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_waterProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_waterProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useCameraMotion"), settings.useCameraMotion);
+    glUniform1i(glGetUniformLocation(m_waterProgram, "useDispMapping"), settings.useDispMapping);
+    glViewport(0, 0, m_width, m_height);
+    m_quad -> draw();
+    glUseProgram(0);
+    time++;
 }
 
 void GLWidget::drawParticles() {
-    auto prevFBO = m_evenPass ? m_particlesFBO1 : m_particlesFBO2;
-    auto nextFBO = m_evenPass ? m_particlesFBO2 : m_particlesFBO1;
-    float firstPass = m_firstPass ? 1.0f : 0.0f;
-
-    // TODO [Task 13] Move the particles from prevFBO to nextFBO while updating them
-
-    // TODO [Task 17] Draw the particles from nextFBO
-
-    m_firstPass = false;
-    m_evenPass = !m_evenPass;
+    static int time = 0;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(m_terrainProgram);
+    glUniform1f(glGetUniformLocation(m_terrainProgram, "iTime"), time/60.f);
+    glm::vec2 resoution = glm::vec2(width(), height());
+    glUniform2fv(glGetUniformLocation(m_terrainProgram, "resolution"), 1, glm::value_ptr(resoution));
+    glm::vec2 fireData = glm::vec2(settings.numFire, settings.numPar);
+    glUniform2fv(glGetUniformLocation(m_terrainProgram, "fireData"), 1, glm::value_ptr(fireData));
+    glm::vec3 skyColor = glm::vec3(settings.color_r, settings.color_g, settings.color_b);
+    glUniform3fv(glGetUniformLocation(m_terrainProgram, "skyColor"), 1, glm::value_ptr(skyColor));
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useCameraMotion"), settings.useCameraMotion);
+    glUniform1i(glGetUniformLocation(m_terrainProgram, "useDispMapping"), settings.useDispMapping);
+    glViewport(0, 0, m_width, m_height);
+    m_quad -> draw();
+    glUseProgram(0);
+    time++;
 }
 
 // This is called at the beginning of the program between initializeGL and
@@ -121,19 +187,15 @@ void GLWidget::drawParticles() {
 void GLWidget::resizeGL(int w, int h) {
     m_width = w;
     m_height = h;
-
-    // TODO: [Task 5] Initialize FBOs here, with dimensions m_width and m_height.
-    //       [Task 11] Pass in TextureParameters::WRAP_METHOD::CLAMP_TO_EDGE as the last parameter
-
     rebuildMatrices();
 }
 
 // Sets the viewport to ensure that {0,0} is always in the center of the viewport
 // in clip space, and to ensure that the aspect ratio is 1:1
 void GLWidget::setParticleViewport() {
-    int maxDim = std::max(m_width, m_height);
-    int x = (m_width - maxDim) / 2.0f;
-    int y = (m_height - maxDim) / 2.0f;
+    int maxDim = std::max(width(), height());
+    int x = (width() - maxDim) / 2.0f;
+    int y = (height() - maxDim) / 2.0f;
     glViewport(x, y, maxDim, maxDim);
 }
 

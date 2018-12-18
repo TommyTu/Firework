@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_ui->setupUi(this);
     QGridLayout *gridLayout = new QGridLayout(m_ui->centralWidget);
     m_glWidget = new GLWidget(qglFormat, this);
-    m_glWidget->setMinimumSize(100, 100);
+    m_glWidget->setMinimumSize(500, 500);
     gridLayout->addWidget(m_glWidget, 0, 1);
 
     settings.loadSettingsOrDefaults();
@@ -44,6 +44,23 @@ void MainWindow::dataBind() {
     BIND(ChoiceBinding::bindRadioButtons(NUM_MODES, settings.mode,
                                     m_ui->modeBlur,
                                     m_ui->modeParticles));
+
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->numFireSlide, m_ui->numFireTextbox, settings.numFire, 0, 10))
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->numParSlide, m_ui->numParTextbox, settings.numPar, 0, 75))
+
+
+    BIND(BoolBinding::bindCheckbox(m_ui->cameraMotion, settings.useCameraMotion))
+    BIND(BoolBinding::bindCheckbox(m_ui->dispMapping, settings.useDispMapping))
+
+
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->colorSliderRed, m_ui->colorTextboxRed, settings.color_r, 0, 255))
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->colorSliderGreen, m_ui->colorTextboxGreen, settings.color_g, 0, 255))
+    BIND(IntBinding::bindSliderAndTextbox(
+        m_ui->colorSliderBlue, m_ui->colorTextboxBlue, settings.color_b, 0, 255))
 #undef BIND
 }
 
@@ -54,7 +71,7 @@ void MainWindow::settingsChanged() {
 void MainWindow::closeEvent(QCloseEvent *event) {
     // Save the settings before we quit
     settings.saveSettings();
-    QSettings qtSettings("CS123", "Lab07");
+    QSettings qtSettings("CS123", "Project");
     qtSettings.setValue("geometry", saveGeometry());
     qtSettings.setValue("windowState", saveState());
 
